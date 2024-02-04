@@ -82,7 +82,6 @@ fn bench_mpk_pooling(path: &Path, instances_per_engine: usize, mpk: bool, num_en
     //     .into_iter()
     //     .for_each(|(instance, s)| exec(instance, s))
 
-
     // TODO: parallel
     // TODO: join
     // TODO: smart choosing of engine number and num sandboxes?
@@ -109,4 +108,3 @@ fn main() {
     bench_mpk_pooling(path, instance_slot_count, mpk, num_engines);
     println!("Done!");
 }
-
