@@ -9,13 +9,14 @@ fn store(engine: &Engine) -> Store<WasiCtx> {
     Store::new(engine, wasi)
 }
 
-fn get_config(mpk: bool) -> Config {
+fn get_config(num_instances: usize, mpk: bool) -> Config {
     let mut pool = PoolingAllocationConfig::default();
     let enabled = if mpk {
         MpkEnabled::Enable
     } else {
         MpkEnabled::Disable
     };
+    pool.total_core_instances(num_instances as u32);
     pool.memory_protection_keys(enabled);
     let strategy = InstanceAllocationStrategy::Pooling(pool);
     // let slot_size = if mpk { 1 << 29 } else { 1 << 32 };
@@ -74,7 +75,7 @@ fn bench_mpk_pooling(path: &Path, instances_per_engine: usize, mpk: bool, num_en
         path, num_engines, instances_per_engine, mpk,
     );
 
-    let config = get_config(mpk);
+    let config = get_config(instances_per_engine, mpk);
     let _instances = get_instances(config, path, num_engines, instances_per_engine);
 
     // instances
