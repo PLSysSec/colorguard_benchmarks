@@ -1,10 +1,8 @@
 mod config;
 mod exec;
-mod instantiation;
 
-use exec::spawn_epoch_thread;
+use exec::*;
 use futures::executor::block_on;
-use instantiation::TaskManager;
 use std::env;
 use std::path::Path;
 use std::time::Instant;
