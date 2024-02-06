@@ -1,6 +1,14 @@
 use chrono::{prelude::*, Duration};
 use serde::Serialize;
 use tera::{Context, Tera};
+use std::time;
+use std::thread::sleep;
+
+fn delay() {
+  // let t = delay_time();
+  let ten_millis = time::Duration::from_millis(10);
+  sleep(ten_millis);
+}
 
 #[derive(Serialize)]
 struct InvoiceItem {
@@ -45,6 +53,8 @@ pub fn main() {
 
     // Create context object for template
     let mut context = Context::new();
+
+    delay();
 
     // Set template data to context
     context.insert("page_title", "Sample Invoice, powered by Fastly");

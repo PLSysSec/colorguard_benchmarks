@@ -2,6 +2,14 @@
 use anyhow::Result;
 use lazy_static::lazy_static;
 use regex::Regex;
+use std::time;
+use std::thread::sleep;
+
+fn delay() {
+    // let t = delay_time();
+    let ten_millis = time::Duration::from_millis(10);
+    sleep(ten_millis);
+  }
 
 // #[fastly::main]
 fn main() -> Result<()> {
@@ -42,7 +50,7 @@ fn main() -> Result<()> {
             log::info!("Captured status code using non-capturing groups: {}", &caps[1]);
         }
     }
-
+    delay();
     {
         // Bracketed character class with [...]
         lazy_static! {
