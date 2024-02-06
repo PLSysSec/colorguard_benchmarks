@@ -7,7 +7,6 @@ pub fn spawn_epoch_thread(engine: Engine, num_usec: u64) -> Sender<()> {
     let epoch_t = Duration::from_micros(num_usec);
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
-        // match self.rx
         loop {
             // poll for termination flag
             match rx.try_recv() {

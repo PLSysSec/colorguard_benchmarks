@@ -1,10 +1,25 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use std::path::Path;
 use std::sync::Arc;
 use wasmtime::*;
 use wasmtime_wasi::{sync::WasiCtxBuilder, WasiCtx};
 
 use crate::config::get_engine;
+
+pub async fn do_tasks_async(
+    pre: &InstancePre<WasiCtx>,
+    mut s: Store<WasiCtx>,
+    num_tasks: usize,
+) -> Result<()> {
+    for _ in 0..num_tasks {
+        let instance = pre.instantiate_async(&mut s).await?;
+        instance
+            .get_typed_func::<(), ()>(&mut s, "_start")?
+            .call_async(&mut s, ())
+            .await?;
+    }
+    Ok(())
+}
 
 /// set timeslice to 1 epoch
 fn store(engine: &Engine, is_async: bool) -> Store<WasiCtx> {
@@ -53,42 +68,26 @@ impl TaskManager {
         }
     }
 
-    pub async fn do_task_n_async(&mut self, n: usize) {
-        // let mut tasks = Vec::new();
-        // (0..n).map(self.do_task_async)
-
-        for _ in 0..n {
-            self.do_task_async().await.unwrap();
-            // task.push(future);
-        }
-        // futures::future::join_all(tasks).await;
-    }
-
-    pub async fn do_task_async(&mut self) -> Result<()> {
-        // TODO: pick random store?
-        // let s = self.stores[0];
-        // let instance = self.get_instance(s);
-        let instance = self.pre.instantiate_async(&mut self.stores[0]).await?;
-        instance
-            .get_typed_func::<(), ()>(&mut self.stores[0], "_start")?
-            .call_async(&mut self.stores[0], ())
-            .await?;
-        Ok(())
-    }
-
-    pub fn do_task_n_sync(&mut self, n: usize) {
-        for _ in 0..n {
-            self.do_task_sync().expect("Task failed to run");
+    pub async fn do_task_n_async(self, tasks_per_store: usize) -> Result<()> {
+        let tasks = self
+            .stores
+            .into_iter()
+            .map(|s| do_tasks_async(&self.pre, s, tasks_per_store));
+        let results = futures::future::join_all(tasks).await;
+        if results.iter().any(|r| r.is_err()) {
+            Ok(())
+        } else {
+            Err(anyhow!("async task failed"))
         }
     }
-    // TODO: deal with unwraps and and awaits
 
-    pub fn do_task_sync(&mut self) -> Result<()> {
-        // TODO: pick random store?
-        // let s = &mut self.stores[0];
-        let instance = self.pre.instantiate(&mut self.stores[0])?;
-        let f = instance.get_typed_func::<(), ()>(&mut self.stores[0], "_start")?;
-        f.call(&mut self.stores[0], ())?;
+    pub fn do_task_n_sync(mut self, tasks_per_store: usize) -> Result<()> {
+        let num_tasks = tasks_per_store * self.stores.len();
+        for _ in 0..num_tasks {
+            let instance = self.pre.instantiate(&mut self.stores[0])?;
+            let f = instance.get_typed_func::<(), ()>(&mut self.stores[0], "_start")?;
+            f.call(&mut self.stores[0], ())?;
+        }
         Ok(())
     }
 }

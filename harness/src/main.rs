@@ -11,18 +11,24 @@ use std::time::Instant;
 
 // TODO: smart choosing of engine number and num sandboxes?
 
-fn bench_mpk_pooling(path: &Path, num_tasks: usize, mpk: bool, num_stores: usize, is_async: bool) {
+fn bench_mpk_pooling(
+    path: &Path,
+    tasks_per_store: usize,
+    mpk: bool,
+    num_stores: usize,
+    is_async: bool,
+) {
     let start = Instant::now();
 
-    let mut mgr = TaskManager::build(path, num_stores, mpk, is_async);
+    let mgr = TaskManager::build(path, num_stores, mpk, is_async);
     let post_instantiation = Instant::now();
 
     if is_async {
         let epoch_thread = spawn_epoch_thread(mgr.engine.clone(), 10); // awaken every 10 microseconds
-        block_on(mgr.do_task_n_async(num_tasks));
+        block_on(mgr.do_task_n_async(tasks_per_store)).unwrap();
         epoch_thread.send(()).unwrap(); // kill epoch thread
     } else {
-        mgr.do_task_n_sync(num_tasks);
+        mgr.do_task_n_sync(tasks_per_store).unwrap();
     }
     let end = Instant::now();
 
@@ -39,16 +45,16 @@ fn main() {
     // ../benches/instantiation/toobig.wat
     let p = &args[1];
     // 8
-    let num_tasks = (args[2]).parse::<usize>().unwrap();
+    let tasks_per_store = (args[2]).parse::<usize>().unwrap();
     let path = Path::new(p);
     let num_stores = (args[3]).parse::<usize>().unwrap();
     let mpk = &args[4] == "mpk";
     let is_async = &args[5] == "async";
 
     println!(
-        "mpk_pooling: invoking {:?} {num_tasks} across {num_stores} stores mpk: {mpk}, is_async: {is_async}", path
+        "mpk_pooling: invoking {:?} across {num_stores} with {tasks_per_store} tasks per store\n mpk: {mpk}, is_async: {is_async}", path
     );
 
-    bench_mpk_pooling(path, num_tasks, mpk, num_stores, is_async);
+    bench_mpk_pooling(path, tasks_per_store, mpk, num_stores, is_async);
     println!("Done!");
 }
