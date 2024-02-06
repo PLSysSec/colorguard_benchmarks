@@ -5,6 +5,9 @@ use wasmtime_wasi::{sync::WasiCtxBuilder, WasiCtx};
 
 fn get_config(mpk: bool, is_async: bool) -> Config {
     let mut pool = PoolingAllocationConfig::default();
+    // pool.total_core_instances(1_000);
+    // pool.total_memories(1_000);
+    // pool.total_tables(1_000);
     let enabled = if mpk {
         MpkEnabled::Enable
     } else {
@@ -26,9 +29,21 @@ pub fn get_engine(mpk: bool, is_async: bool) -> Engine {
     Engine::new(&config).expect("failed to create engine")
 }
 
+// pub fn get_engines(num_engines: usize, mpk: bool, is_async: bool) -> Vec<Engine> {
+//     // let config = get_config(mpk, is_async);
+//     let mut engines = Vec::new();
+//     for _ in 0..num_engines {
+//         let engine = get_engine(mpk, is_async);
+//         engines.push(engine);
+//     }
+//     engines
+//     // Engine::new(&config).expect("failed to create engine")
+// }
+
 /// set timeslice to 1 epoch
 pub fn store(engine: &Engine, is_async: bool) -> Store<WasiCtx> {
     let wasi = WasiCtxBuilder::new().build();
+    // wasi.inherit_stdout();
     let mut store = Store::new(engine, wasi);
     if is_async {
         store.set_epoch_deadline(1);
@@ -36,8 +51,6 @@ pub fn store(engine: &Engine, is_async: bool) -> Store<WasiCtx> {
     }
     store
 }
-
-// TODO: 1 engine with n stores each with m instances???
 
 pub fn get_preinstance(engine: Engine, path: &Path) -> Arc<InstancePre<WasiCtx>> {
     let mut linker = Linker::new(&engine);

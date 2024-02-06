@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use futures::executor::block_on;
 use std::path::Path;
 use std::sync::mpsc::{self, Sender, TryRecvError};
 use std::sync::Arc;
@@ -24,7 +25,7 @@ pub async fn do_tasks_async(
     Ok(())
 }
 
-pub fn spawn_epoch_thread(engine: Engine, num_usec: u64) -> Sender<()> {
+pub fn spawn_epoch_thread(engines: Vec<Engine>, num_usec: u64) -> Sender<()> {
     let epoch_t = Duration::from_micros(num_usec);
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
@@ -39,7 +40,9 @@ pub fn spawn_epoch_thread(engine: Engine, num_usec: u64) -> Sender<()> {
             };
 
             // increment epoch
-            engine.increment_epoch();
+            for engine in engines.iter() {
+                engine.increment_epoch();
+            }
             // go back to sleep
             thread::sleep(epoch_t);
         }
@@ -56,10 +59,10 @@ pub struct TaskManager {
 }
 
 impl TaskManager {
-    pub fn build(path: &Path, num_stores: usize, mpk: bool, is_async: bool) -> Self {
+    pub fn build(path: &Path, stores_per_engine: usize, mpk: bool, is_async: bool) -> Self {
         let engine = get_engine(mpk, is_async);
         let pre = get_preinstance(engine.clone(), path);
-        let stores = get_stores(engine.clone(), num_stores, is_async);
+        let stores = get_stores(engine.clone(), stores_per_engine, is_async);
         Self {
             is_async,
             mpk,
@@ -69,6 +72,21 @@ impl TaskManager {
         }
     }
 
+    pub fn build_n(
+        path: &Path,
+        num_engines: usize,
+        stores_per_engine: usize,
+        mpk: bool,
+        is_async: bool,
+    ) -> Vec<Self> {
+        let mut mgrs = Vec::new();
+        for _ in 0..num_engines {
+            let mgr = Self::build(path, stores_per_engine, mpk, is_async);
+            mgrs.push(mgr);
+        }
+        mgrs
+    }
+
     pub async fn do_task_n_async(self, tasks_per_store: usize) -> Result<()> {
         let tasks = self
             .stores
@@ -76,18 +94,19 @@ impl TaskManager {
             .map(|s| do_tasks_async(&self.pre, s, tasks_per_store));
         let results = futures::future::join_all(tasks).await;
         if results.iter().any(|r| r.is_err()) {
-            Ok(())
-        } else {
             Err(anyhow!("async task failed"))
+        } else {
+            Ok(())
         }
     }
 
     pub fn do_task_n_sync(mut self, tasks_per_store: usize) -> Result<()> {
         let num_tasks = tasks_per_store * self.stores.len();
-        for _ in 0..num_tasks {
-            let instance = self.pre.instantiate(&mut self.stores[0])?;
-            let f = instance.get_typed_func::<(), ()>(&mut self.stores[0], "_start")?;
-            f.call(&mut self.stores[0], ())?;
+        for idx in 0..num_tasks {
+            let s_idx = idx % self.stores.len();
+            let instance = self.pre.instantiate(&mut self.stores[s_idx])?;
+            let f = instance.get_typed_func::<(), ()>(&mut self.stores[s_idx], "_start")?;
+            f.call(&mut self.stores[s_idx], ())?;
         }
         Ok(())
     }
@@ -101,4 +120,37 @@ pub fn get_stores(engine: Engine, num_stores: usize, is_async: bool) -> Vec<Stor
         stores.push(store);
     }
     stores
+}
+
+pub async fn exec_all_async(mgrs: Vec<TaskManager>, tasks_per_store: usize) -> Result<()> {
+    let mut tasks = Vec::new();
+    for mgr in mgrs.into_iter() {
+        let task = mgr.do_task_n_async(tasks_per_store);
+        tasks.push(task);
+    }
+    let results = futures::future::join_all(tasks).await;
+    if results.iter().any(|r| r.is_err()) {
+        Err(anyhow!("async task failed"))
+    } else {
+        Ok(())
+    }
+}
+
+pub fn exec_all_sync(mgrs: Vec<TaskManager>, tasks_per_store: usize) -> Result<()> {
+    for mgr in mgrs.into_iter() {
+        mgr.do_task_n_sync(tasks_per_store)?;
+    }
+    Ok(())
+}
+
+pub fn exec_all(mgrs: Vec<TaskManager>, tasks_per_store: usize, is_async: bool) {
+    if is_async {
+        let engines = mgrs.iter().map(|mgr| mgr.engine.clone()).collect();
+        let epoch_thread = spawn_epoch_thread(engines, 10); // awaken every 10 microseconds
+        block_on(exec_all_async(mgrs, tasks_per_store)).unwrap();
+        epoch_thread.send(()).unwrap(); // kill epoch thread
+    } else {
+        exec_all_sync(mgrs, tasks_per_store).unwrap();
+        // mgr.do_task_n_sync(tasks_per_store).unwrap();
+    }
 }
