@@ -1,0 +1,3 @@
+[submodule "wasmtime-colorguard"]
+	path = wasmtime-colorguard
+	url = git@github.com:PLSysSec/wasmtime-colorguard.git

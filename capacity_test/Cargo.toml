@@ -6,5 +6,5 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wasmtime = "17.0.0"
-wasmtime-wasi = "17.0.0"
+wasmtime = { version = "19.0.0", path = "../wasmtime-colorguard/crates/wasmtime" }
+wasmtime-wasi = { version = "19.0.0", path = "../wasmtime-colorguard/crates/wasi" }
