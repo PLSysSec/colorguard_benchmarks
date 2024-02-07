@@ -48,8 +48,8 @@ fn main() {
     let path = Path::new(p);
 
     let num_engines = (args[2]).parse::<usize>().unwrap();
-    let tasks_per_store = (args[3]).parse::<usize>().unwrap();
-    let stores_per_engine = (args[4]).parse::<usize>().unwrap();
+    let stores_per_engine = (args[3]).parse::<usize>().unwrap();
+    let tasks_per_store = (args[4]).parse::<usize>().unwrap();
 
     let mpk = &args[5] == "mpk";
     let is_async = &args[6] == "async";
