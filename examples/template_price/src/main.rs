@@ -4,11 +4,22 @@ use tera::{Context, Tera};
 use std::time;
 use std::thread::sleep;
 
+use rand_distr::{Poisson, Distribution};
+// fn delay_time() -> u64 {
+//   1000
+// }
+
 fn delay() {
   // let t = delay_time();
-  let ten_millis = time::Duration::from_millis(10);
-  sleep(ten_millis);
+  // let ten_millis = time::Duration::from_millis(10);
+  // sleep(ten_millis);
+  let lambda = 5.0;
+  let poi = Poisson::new(lambda).unwrap();
+  let v = poi.sample(&mut rand::thread_rng());
+  let millis = time::Duration::from_millis(v as u64);
+  sleep(millis);
 }
+
 
 #[derive(Serialize)]
 struct InvoiceItem {
@@ -26,6 +37,8 @@ fn serialize_price<S: serde::Serializer>(price: &f32, s: S) -> Result<S::Ok, S::
 // #[fastly::main]
 // #[wasm_bindgen]
 pub fn main() {
+  delay();
+
     // Invoice item data
     let invoice_items = vec![
         InvoiceItem {
@@ -54,7 +67,6 @@ pub fn main() {
     // Create context object for template
     let mut context = Context::new();
 
-    delay();
 
     // Set template data to context
     context.insert("page_title", "Sample Invoice, powered by Fastly");
