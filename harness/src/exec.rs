@@ -65,22 +65,31 @@ impl TaskManager {
         mgrs
     }
 
+    async fn do_task_async(&self) -> Result<()> {
+        let mut store = get_store(&self.engine, true);
+        let instance = self.pre.instantiate_async(&mut store).await?;
+        let f = instance.get_typed_func::<(), ()>(&mut store, "_start")?;
+        f.call_async(&mut store, ()).await
+    }
+
     pub async fn do_task_n_async(&self, num_tasks: usize) -> Result<()> {
         let mut active_tasks = 0;
+        let mut handles = Vec::new();
         for _ in 0..num_tasks {
             // busy wait until there is a slot open
             println!("active_tasks = {:?}", active_tasks);
-            while active_tasks < STORES_PER_ENGINE {}
+            while active_tasks >= STORES_PER_ENGINE {}
+            active_tasks += 1;
+
+            let handle = self.do_task_async();
+            handles.push(handle);
             // if active_tasks == STORES_PER_ENGINE {
             //     assert!(false); // TODO: figure out a way to wait
             // }
-            active_tasks += 1;
-            let mut store = get_store(&self.engine, true);
-            let instance = self.pre.instantiate_async(&mut store).await?;
-            let f = instance.get_typed_func::<(), ()>(&mut store, "_start")?;
-            f.call_async(&mut store, ()).await?;
+            
             active_tasks -= 1;
         }
+        futures::future::join_all(handles).await;
         Ok(())
     }
 
