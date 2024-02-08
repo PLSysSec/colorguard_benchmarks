@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use futures::executor::block_on;
+use futures::prelude::*;
 use std::path::Path;
 use std::sync::mpsc::{self, Sender, TryRecvError};
 use std::sync::Arc;
@@ -7,7 +8,6 @@ use std::thread;
 use std::time::Duration;
 use wasmtime::*;
 use wasmtime_wasi::WasiCtx;
-use futures::prelude::*;
 
 use crate::config::*;
 
@@ -39,28 +39,22 @@ pub fn spawn_epoch_thread(engines: Vec<Engine>, num_millisec: u64) -> Sender<()>
 }
 
 pub struct TaskManager {
-    pub is_async: bool,
     pub mpk: bool,
     pub engine: Engine,
     pub pre: Arc<InstancePre<WasiCtx>>,
 }
 
 impl TaskManager {
-    pub fn build(path: &Path, mpk: bool, is_async: bool) -> Self {
-        let engine = get_engine(mpk, is_async);
+    pub fn build(path: &Path, mpk: bool) -> Self {
+        let engine = get_engine(mpk);
         let pre = get_preinstance(engine.clone(), path);
-        Self {
-            is_async,
-            mpk,
-            engine,
-            pre,
-        }
+        Self { mpk, engine, pre }
     }
 
-    pub fn build_n(path: &Path, num_engines: usize, mpk: bool, is_async: bool) -> Vec<Self> {
+    pub fn build_n(path: &Path, num_engines: usize, mpk: bool) -> Vec<Self> {
         let mut mgrs = Vec::new();
         for _ in 0..num_engines {
-            let mgr = Self::build(path, mpk, is_async);
+            let mgr = Self::build(path, mpk);
             mgrs.push(mgr);
         }
         mgrs
@@ -78,29 +72,15 @@ impl TaskManager {
         for _ in 0..num_tasks {
             let handle = self.do_task_async();
             handles.push(handle);
-
         }
         // execute tasks with up to STORES_PER_ENGINE concurrent tasks
         let stream = futures::stream::iter(handles).buffer_unordered(STORES_PER_ENGINE);
-        let results = stream.collect::<Vec<_>>().await;       
+        let results = stream.collect::<Vec<_>>().await;
         if results.iter().any(|r| r.is_err()) {
             Err(anyhow!("async task failed"))
         } else {
             Ok(())
-        } 
-        // futures::future::join_all(handles).await;
-        // Ok(())
-    }
-
-    // perform n tasks, generating stores for each
-    pub fn do_task_n_sync(&self, num_tasks: usize) -> Result<()> {
-        for _ in 0..num_tasks {
-            let mut store = get_store(&self.engine, false);
-            let instance = self.pre.instantiate(&mut store)?;
-            let f = instance.get_typed_func::<(), ()>(&mut store, "_start")?;
-            f.call(&mut store, ())?;
         }
-        Ok(())
     }
 }
 
@@ -120,20 +100,9 @@ pub async fn exec_all_async(mgrs: &[TaskManager], tasks_per_engine: usize) -> Re
     }
 }
 
-pub fn exec_all_sync(mgrs: &[TaskManager], tasks_per_store: usize) -> Result<()> {
-    for mgr in mgrs.iter() {
-        mgr.do_task_n_sync(tasks_per_store)?;
-    }
-    Ok(())
-}
-
-pub fn exec_all(mgrs: &[TaskManager], tasks_per_engine: usize, is_async: bool) {
-    if is_async {
-        let engines = mgrs.iter().map(|mgr| mgr.engine.clone()).collect();
-        let epoch_thread = spawn_epoch_thread(engines, 10); // awaken every 10 microseconds
-        block_on(exec_all_async(mgrs, tasks_per_engine)).unwrap();
-        epoch_thread.send(()).unwrap(); // kill epoch thread
-    } else {
-        exec_all_sync(mgrs, tasks_per_engine).unwrap();
-    }
+pub fn exec_all(mgrs: &[TaskManager], tasks_per_engine: usize) {
+    let engines = mgrs.iter().map(|mgr| mgr.engine.clone()).collect();
+    let epoch_thread = spawn_epoch_thread(engines, 10); // awaken every 10 microseconds
+    block_on(exec_all_async(mgrs, tasks_per_engine)).unwrap();
+    epoch_thread.send(()).unwrap(); // kill epoch thread
 }

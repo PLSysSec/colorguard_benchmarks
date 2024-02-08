@@ -6,21 +6,13 @@ use std::env;
 use std::path::Path;
 use std::time::Instant;
 
-// TODO: smart choosing of engine number and num sandboxes?
-
-fn bench_mpk_pooling(
-    path: &Path,
-    num_engines: usize,
-    tasks_per_engine: usize,
-    mpk: bool,
-    is_async: bool,
-) {
+fn bench_mpk_pooling(path: &Path, num_engines: usize, tasks_per_engine: usize, mpk: bool) {
     let start = Instant::now();
 
-    let mgrs = TaskManager::build_n(path, num_engines, mpk, is_async);
+    let mgrs = TaskManager::build_n(path, num_engines, mpk);
     let post_instantiation = Instant::now();
 
-    exec_all(&mgrs, tasks_per_engine, is_async);
+    exec_all(&mgrs, tasks_per_engine);
 
     let end = Instant::now();
 
@@ -30,9 +22,9 @@ fn bench_mpk_pooling(
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() != 6 {
+    if args.len() != 5 {
         println!(
-            "Usage: cargo run <path> <num_engine> <tasks per store> <mpk or no> <async or no>"
+            "Usage: cargo run <path> <num_engine> <tasks per store> <mpk or no>"
         );
         std::process::exit(1);
     }
@@ -41,12 +33,11 @@ fn main() {
     let num_engines = (args[2]).parse::<usize>().unwrap();
     let tasks_per_engine = (args[3]).parse::<usize>().unwrap();
     let mpk = &args[4] == "mpk";
-    let is_async = &args[5] == "async";
 
     println!(
-        "mpk_pooling: invoking {:?} across {num_engines} with {tasks_per_engine} tasks per engine\nmpk: {mpk}, is_async: {is_async}", path
+        "mpk_pooling: invoking {:?} across {num_engines} with {tasks_per_engine} tasks per engine\nmpk: {mpk}", path
     );
 
-    bench_mpk_pooling(path, num_engines, tasks_per_engine, mpk, is_async);
+    bench_mpk_pooling(path, num_engines, tasks_per_engine, mpk);
     println!("Done!");
 }
