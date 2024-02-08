@@ -70,7 +70,7 @@ impl TaskManager {
         for _ in 0..num_tasks {
             // busy wait until there is a slot open
             println!("active_tasks = {:?}", active_tasks);
-            while active_tasks < STORES_PER_ENGINE {}
+            while active_tasks >= STORES_PER_ENGINE {}
             // if active_tasks == STORES_PER_ENGINE {
             //     assert!(false); // TODO: figure out a way to wait
             // }
