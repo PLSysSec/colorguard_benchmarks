@@ -7,6 +7,7 @@ use std::thread;
 use std::time::Duration;
 use wasmtime::*;
 use wasmtime_wasi::WasiCtx;
+use futures::prelude::*;
 
 use crate::config::*;
 
@@ -73,24 +74,22 @@ impl TaskManager {
     }
 
     pub async fn do_task_n_async(&self, num_tasks: usize) -> Result<()> {
-        let mut active_tasks = 0;
         let mut handles = Vec::new();
         for _ in 0..num_tasks {
-            // busy wait until there is a slot open
-            println!("active_tasks = {:?}", active_tasks);
-            while active_tasks >= STORES_PER_ENGINE {}
-            active_tasks += 1;
-
             let handle = self.do_task_async();
             handles.push(handle);
-            // if active_tasks == STORES_PER_ENGINE {
-            //     assert!(false); // TODO: figure out a way to wait
-            // }
-            
-            active_tasks -= 1;
+
         }
-        futures::future::join_all(handles).await;
-        Ok(())
+        // execute tasks with up to STORES_PER_ENGINE concurrent tasks
+        let stream = futures::stream::iter(handles).buffer_unordered(STORES_PER_ENGINE);
+        let results = stream.collect::<Vec<_>>().await;       
+        if results.iter().any(|r| r.is_err()) {
+            Err(anyhow!("async task failed"))
+        } else {
+            Ok(())
+        } 
+        // futures::future::join_all(handles).await;
+        // Ok(())
     }
 
     // perform n tasks, generating stores for each
