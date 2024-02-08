@@ -25,8 +25,8 @@ pub async fn do_tasks_async(
     Ok(())
 }
 
-pub fn spawn_epoch_thread(engines: Vec<Engine>, num_usec: u64) -> Sender<()> {
-    let epoch_t = Duration::from_micros(num_usec);
+pub fn spawn_epoch_thread(engines: Vec<Engine>, num_millisec: u64) -> Sender<()> {
+    let epoch_t = Duration::from_millis(num_millisec);
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
         loop {
@@ -93,7 +93,7 @@ impl TaskManager {
             .into_iter()
             .map(|s| do_tasks_async(&self.pre, s, tasks_per_store));
         let results = futures::future::join_all(tasks).await;
-        if results.iter().any(|r| r.is_err()) {
+        if results.iter().any(|r| { r.as_ref().unwrap(); r.is_err() }) {
             Err(anyhow!("async task failed"))
         } else {
             Ok(())
@@ -129,7 +129,7 @@ pub async fn exec_all_async(mgrs: Vec<TaskManager>, tasks_per_store: usize) -> R
         tasks.push(task);
     }
     let results = futures::future::join_all(tasks).await;
-    if results.iter().any(|r| r.is_err()) {
+    if results.iter().any(|r| { r.is_err() }) {
         Err(anyhow!("async task failed"))
     } else {
         Ok(())

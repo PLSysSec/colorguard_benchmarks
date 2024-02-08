@@ -5,9 +5,9 @@ use wasmtime_wasi::{sync::WasiCtxBuilder, WasiCtx};
 
 fn get_config(mpk: bool, is_async: bool) -> Config {
     let mut pool = PoolingAllocationConfig::default();
-    // pool.total_core_instances(1_000);
-    // pool.total_memories(1_000);
-    // pool.total_tables(1_000);
+    // pool.total_core_instances(10_000);
+    // pool.total_memories(10_000);
+    // pool.total_tables(10_000);
     let enabled = if mpk {
         MpkEnabled::Enable
     } else {
