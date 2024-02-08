@@ -29,19 +29,8 @@ pub fn get_engine(mpk: bool, is_async: bool) -> Engine {
     Engine::new(&config).expect("failed to create engine")
 }
 
-// pub fn get_engines(num_engines: usize, mpk: bool, is_async: bool) -> Vec<Engine> {
-//     // let config = get_config(mpk, is_async);
-//     let mut engines = Vec::new();
-//     for _ in 0..num_engines {
-//         let engine = get_engine(mpk, is_async);
-//         engines.push(engine);
-//     }
-//     engines
-//     // Engine::new(&config).expect("failed to create engine")
-// }
-
 /// set timeslice to 1 epoch
-pub fn store(engine: &Engine, is_async: bool) -> Store<WasiCtx> {
+pub fn get_store(engine: &Engine, is_async: bool) -> Store<WasiCtx> {
     let wasi = WasiCtxBuilder::new().build();
     // wasi.inherit_stdout();
     let mut store = Store::new(engine, wasi);
@@ -63,3 +52,13 @@ pub fn get_preinstance(engine: Engine, path: &Path) -> Arc<InstancePre<WasiCtx>>
             .expect("failed to pre-instantiate"),
     )
 }
+
+// pub fn get_stores(engine: Engine, num_stores: usize, is_async: bool) -> Vec<Store<WasiCtx>> {
+//     let mut stores = Vec::new();
+
+//     for _ in 0..num_stores {
+//         let store = get_store(&engine, is_async);
+//         stores.push(store);
+//     }
+//     stores
+// }
