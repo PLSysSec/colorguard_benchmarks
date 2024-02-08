@@ -68,9 +68,12 @@ impl TaskManager {
     pub async fn do_task_n_async(&self, num_tasks: usize) -> Result<()> {
         let mut active_tasks = 0;
         for _ in 0..num_tasks {
-            if active_tasks == STORES_PER_ENGINE {
-                assert!(false); // TODO: figure out a way to wait
-            }
+            // busy wait until there is a slot open
+            println!("active_tasks = {:?}", active_tasks);
+            while active_tasks < STORES_PER_ENGINE {}
+            // if active_tasks == STORES_PER_ENGINE {
+            //     assert!(false); // TODO: figure out a way to wait
+            // }
             active_tasks += 1;
             let mut store = get_store(&self.engine, true);
             let instance = self.pre.instantiate_async(&mut store).await?;
