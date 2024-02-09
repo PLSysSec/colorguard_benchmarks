@@ -7,8 +7,9 @@ use std::thread;
 use std::time::Duration;
 use tokio::time::sleep;
 use wasmtime::*;
-use wasmtime_wasi::WasiCtx;
+// use wasmtime_wasi::WasiCtx;
 // use tokio::time::Sleep;
+use crate::config::WasiHostCtx;
 
 use crate::config::*;
 
@@ -43,7 +44,7 @@ pub fn spawn_epoch_thread(engines: Vec<Engine>, num_millisec: u64) -> Sender<()>
 pub struct TaskManager {
     pub mpk: bool,
     pub engine: Engine,
-    pub pre: Arc<InstancePre<WasiCtx>>,
+    pub pre: Arc<InstancePre<WasiHostCtx>>,
 }
 
 impl TaskManager {
@@ -64,7 +65,7 @@ impl TaskManager {
 
     /// execute loaded module once
     async fn do_task(&self) -> Result<()> {
-        let mut store = get_store(&self.engine, true);
+        let mut store = get_store(&self.engine);
         let instance = self.pre.instantiate_async(&mut store).await?;
         let f = instance.get_typed_func::<(), ()>(&mut store, "_start")?;
         f.call_async(&mut store, ()).await

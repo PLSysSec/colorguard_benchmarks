@@ -6,7 +6,6 @@ use std::env;
 use std::path::Path;
 use std::time::Instant;
 
-/// delay in microseconds
 fn bench_mpk_pooling(
     path: &Path,
     num_engines: usize,
