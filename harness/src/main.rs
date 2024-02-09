@@ -30,7 +30,9 @@ fn bench_mpk_pooling(
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() != 6 {
-        println!("Usage: cargo run <path> <num_engine> <tasks per store> <delayin microseconds> <mpk or no>");
+        println!(
+            "Usage: cargo run <path> <num_engine> <tasks per store> <delay in ns> <mpk or no>"
+        );
         std::process::exit(1);
     }
     let path = Path::new(&args[1]);

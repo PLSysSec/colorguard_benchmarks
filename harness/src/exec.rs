@@ -84,7 +84,7 @@ impl TaskManager {
         let stream = futures::stream::iter(handles).buffer_unordered(STORES_PER_ENGINE);
         let results = stream
             .then(|x| async {
-                sleep(Duration::from_micros(delay_interval)).await;
+                sleep(Duration::from_nanos(delay_interval)).await;
                 x
             })
             .collect::<Vec<_>>()
