@@ -29,7 +29,7 @@ pub fn get_engine(mpk: bool) -> Engine {
 
 /// set timeslice to 1 epoch
 pub fn get_store(engine: &Engine, is_async: bool) -> Store<WasiCtx> {
-    let wasi = WasiCtxBuilder::new().build();
+    let wasi = WasiCtxBuilder::new().inherit_stdout().build();
     // wasi.inherit_stdout();
     let mut store = Store::new(engine, wasi);
     if is_async {

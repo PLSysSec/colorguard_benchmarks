@@ -1,16 +1,18 @@
 use anyhow::{anyhow, Result};
-use futures::executor::block_on;
 use futures::prelude::*;
 use std::path::Path;
 use std::sync::mpsc::{self, Sender, TryRecvError};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
+use tokio::time::sleep;
 use wasmtime::*;
 use wasmtime_wasi::WasiCtx;
+// use tokio::time::Sleep;
 
 use crate::config::*;
 
+pub const EPOCH_T_IN_MILLIS: u64 = 1;
 pub const STORES_PER_ENGINE: usize = 1000;
 
 pub fn spawn_epoch_thread(engines: Vec<Engine>, num_millisec: u64) -> Sender<()> {
@@ -60,22 +62,34 @@ impl TaskManager {
         mgrs
     }
 
-    async fn do_task_async(&self) -> Result<()> {
+    /// execute loaded module once
+    async fn do_task(&self) -> Result<()> {
         let mut store = get_store(&self.engine, true);
         let instance = self.pre.instantiate_async(&mut store).await?;
         let f = instance.get_typed_func::<(), ()>(&mut store, "_start")?;
         f.call_async(&mut store, ()).await
     }
 
-    pub async fn do_task_n_async(&self, num_tasks: usize) -> Result<()> {
+    pub async fn do_task_n(&self, num_tasks: usize, delay_interval: u64) -> Result<()> {
         let mut handles = Vec::new();
+
         for _ in 0..num_tasks {
-            let handle = self.do_task_async();
+            let handle = self.do_task();
             handles.push(handle);
+            // sleep(Duration::from_micros(delay_interval)).await;
+            // handles.insert(handle, idx * delay_interval);
         }
         // execute tasks with up to STORES_PER_ENGINE concurrent tasks
+        // let stream =
         let stream = futures::stream::iter(handles).buffer_unordered(STORES_PER_ENGINE);
-        let results = stream.collect::<Vec<_>>().await;
+        let results = stream
+            .then(|x| async {
+                sleep(Duration::from_micros(delay_interval)).await;
+                x
+            })
+            .collect::<Vec<_>>()
+            .await;
+
         if results.iter().any(|r| r.is_err()) {
             Err(anyhow!("async task failed"))
         } else {
@@ -84,13 +98,17 @@ impl TaskManager {
     }
 }
 
+// TODO: add timed arrival queue here
+// enginers per epoch?
 // all engines exec all their assigned tasks
-pub async fn exec_all_async(mgrs: &[TaskManager], tasks_per_engine: usize) -> Result<()> {
-    let mut handles = Vec::new();
-    for mgr in mgrs.iter() {
-        let handle = mgr.do_task_n_async(tasks_per_engine);
-        handles.push(handle);
-    }
+pub async fn exec_all_async(
+    mgrs: &[TaskManager],
+    tasks_per_engine: usize,
+    delay: u64,
+) -> Result<()> {
+    let handles = mgrs
+        .iter()
+        .map(|mgr| mgr.do_task_n(tasks_per_engine, delay));
 
     let results = futures::future::join_all(handles).await;
     if results.iter().any(|r| r.is_err()) {
@@ -100,9 +118,11 @@ pub async fn exec_all_async(mgrs: &[TaskManager], tasks_per_engine: usize) -> Re
     }
 }
 
-pub fn exec_all(mgrs: &[TaskManager], tasks_per_engine: usize) {
+pub fn exec_all(mgrs: &[TaskManager], tasks_per_engine: usize, delay: u64) {
     let engines = mgrs.iter().map(|mgr| mgr.engine.clone()).collect();
-    let epoch_thread = spawn_epoch_thread(engines, 10); // awaken every 10 microseconds
-    block_on(exec_all_async(mgrs, tasks_per_engine)).unwrap();
+    let epoch_thread = spawn_epoch_thread(engines, EPOCH_T_IN_MILLIS);
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(exec_all_async(mgrs, tasks_per_engine, delay))
+        .unwrap();
     epoch_thread.send(()).unwrap(); // kill epoch thread
 }

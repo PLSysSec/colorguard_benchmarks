@@ -6,13 +6,20 @@ use std::env;
 use std::path::Path;
 use std::time::Instant;
 
-fn bench_mpk_pooling(path: &Path, num_engines: usize, tasks_per_engine: usize, mpk: bool) {
+/// delay in microseconds
+fn bench_mpk_pooling(
+    path: &Path,
+    num_engines: usize,
+    tasks_per_engine: usize,
+    delay: u64,
+    mpk: bool,
+) {
     let start = Instant::now();
 
     let mgrs = TaskManager::build_n(path, num_engines, mpk);
     let post_instantiation = Instant::now();
 
-    exec_all(&mgrs, tasks_per_engine);
+    exec_all(&mgrs, tasks_per_engine, delay);
 
     let end = Instant::now();
 
@@ -22,22 +29,21 @@ fn bench_mpk_pooling(path: &Path, num_engines: usize, tasks_per_engine: usize, m
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() != 5 {
-        println!(
-            "Usage: cargo run <path> <num_engine> <tasks per store> <mpk or no>"
-        );
+    if args.len() != 6 {
+        println!("Usage: cargo run <path> <num_engine> <tasks per store> <delayin microseconds> <mpk or no>");
         std::process::exit(1);
     }
     let path = Path::new(&args[1]);
 
     let num_engines = (args[2]).parse::<usize>().unwrap();
     let tasks_per_engine = (args[3]).parse::<usize>().unwrap();
-    let mpk = &args[4] == "mpk";
+    let delay = (args[4]).parse::<u64>().unwrap();
+    let mpk = &args[5] == "mpk";
 
     println!(
-        "mpk_pooling: invoking {:?} across {num_engines} with {tasks_per_engine} tasks per engine\nmpk: {mpk}", path
+        "mpk_pooling: invoking {:?} across {num_engines} with {tasks_per_engine} tasks per engine\ndelay: {delay}\nmpk: {mpk}", path
     );
 
-    bench_mpk_pooling(path, num_engines, tasks_per_engine, mpk);
+    bench_mpk_pooling(path, num_engines, tasks_per_engine, delay, mpk);
     println!("Done!");
 }
