@@ -19,7 +19,7 @@ fn bench_mpk_pooling(
     let mgrs = TaskManager::build_n(path, num_engines, mpk);
     let post_instantiation = Instant::now();
 
-    exec_all(&mgrs, tasks_per_engine, delay / num_engines as u64);
+    exec_all(&mgrs, tasks_per_engine, delay * num_engines as u64);
 
     let end = Instant::now();
 
