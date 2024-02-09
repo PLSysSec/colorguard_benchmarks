@@ -56,7 +56,7 @@ pub fn get_engine(mpk: bool) -> Engine {
 
 /// set timeslice to 1 epoch
 pub fn get_store(engine: &Engine) -> Store<WasiHostCtx> {
-    let wasi = WasiCtxBuilder::new().inherit_stdout().build();
+    let wasi = WasiCtxBuilder::new().build();
     // wasi.inherit_stdout();
     let host_ctx = WasiHostCtx {
         preview2_ctx: wasi,
