@@ -22,9 +22,9 @@ fn bench_mpk_pooling(path: &Path, num_tasks: usize, delay: u64, mpk: bool) {
     //let start = Instant::now();
 
     let mgr = TaskManager::new(path, mpk);
-    println!("Created engine");
+    //println!("Created engine");
     let post_instantiation = Instant::now();
-    println!("Finished post instantiation");
+    //println!("Finished post instantiation");
     //let (start_nvcsw,start_nivcsw) = get_context_switches();
 
     exec_all(&mgr, num_tasks, delay);
