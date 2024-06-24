@@ -18,20 +18,14 @@ fn get_context_switches() -> (i64, i64) {
 }
 */
 
-fn bench_mpk_pooling(
-    path: &Path,
-    num_engines: usize,
-    tasks_per_engine: usize,
-    delay: u64,
-    mpk: bool,
-) {
+fn bench_mpk_pooling(path: &Path, num_tasks: usize, delay: u64, mpk: bool) {
     //let start = Instant::now();
 
-    let mgrs = TaskManager::build_n(path, num_engines, mpk);
+    let mgr = TaskManager::new(path, mpk);
     let post_instantiation = Instant::now();
     //let (start_nvcsw,start_nivcsw) = get_context_switches();
 
-    exec_all(&mgrs, tasks_per_engine, delay * num_engines as u64);
+    exec_all(&mgr, num_tasks, delay);
 
     let end = Instant::now();
     //let (end_nvcsw,end_nivcsw) = get_context_switches();
@@ -54,18 +48,18 @@ fn main() {
     let delay = (args[3]).parse::<u64>().unwrap();
     let mpk = &args[4] == "mpk";
 
-    let num_engines = if mpk {
-        200 // max engines we can fit in address space using colorguard
-    } else {
-        14 // max engines we can fit in address space not using colorguard
-    };
+    // let num_engines = if mpk {
+    //     200 // max engines we can fit in address space using colorguard
+    // } else {
+    //     14 // max engines we can fit in address space not using colorguard
+    // };
 
-    let tasks_per_engine = num_tasks / num_engines;
+    // let tasks_per_engine = num_tasks / num_engines;
     /*
     println!(
         "mpk_pooling: invoking {:?} across {num_tasks} tasks \n# of engines: {num_engines}\n arrival delay: {delay}ns\nmpk: {mpk}", path
     );
     */
-    bench_mpk_pooling(path, num_engines, tasks_per_engine, delay, mpk);
+    bench_mpk_pooling(path, num_tasks, delay, mpk);
     //println!("Done!");
 }

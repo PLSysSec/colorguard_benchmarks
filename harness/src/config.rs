@@ -49,6 +49,13 @@ fn get_config(mpk: bool) -> Config {
     } else {
         MpkEnabled::Disable
     };
+
+    let max_tasks = if mpk { 192_000 } else { 8192 };
+
+    pool.total_memories(max_tasks);
+    pool.total_core_instances(max_tasks);
+    pool.total_stacks(max_tasks);
+
     //println!("{:?}", pool);
     pool.memory_protection_keys(enabled);
     let strategy = InstanceAllocationStrategy::Pooling(pool);
