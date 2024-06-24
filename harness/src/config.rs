@@ -32,14 +32,7 @@ impl preview2::preview1::WasiPreview1View for WasiHostCtx {
 
 fn get_config(mpk: bool) -> Config {
     let mut pool = PoolingAllocationConfig::default();
-    // pool.total_core_instances(10_000);
-    // pool.total_memories(10_000);
-    // pool.total_tables(10_000);
-    //let mib408
-
     //408 MiB
-    //pool.max_memory_size(0x19_800_000);
-
     let wasm_page_size = 64 * 1024;
     let memory_pages = 0x19_800_000 / wasm_page_size;
     pool.memory_pages(memory_pages);
@@ -50,19 +43,23 @@ fn get_config(mpk: bool) -> Config {
         MpkEnabled::Disable
     };
 
-    let max_tasks = if mpk { 192_000 } else { 8192 };
+    let max_tasks = if mpk { 210_000 } else { 16_000 };
 
     pool.total_memories(max_tasks);
     pool.total_core_instances(max_tasks);
     pool.total_stacks(max_tasks);
+    pool.total_tables(max_tasks);
 
     //println!("{:?}", pool);
     pool.memory_protection_keys(enabled);
     let strategy = InstanceAllocationStrategy::Pooling(pool);
     let mut config = Config::default();
+    config.memory_init_cow(false);
     config.async_support(true);
+    config.max_wasm_stack(4096);
+    config.async_stack_size(8192);
     config.epoch_interruption(true);
-    config.allocation_strategy(strategy.clone());
+    config.allocation_strategy(strategy);
     config
 }
 
@@ -74,7 +71,6 @@ pub fn get_engine(mpk: bool) -> Engine {
 /// set timeslice to 1 epoch
 pub fn get_store(engine: &Engine) -> Store<WasiHostCtx> {
     let wasi = WasiCtxBuilder::new().build();
-    // wasi.inherit_stdout();
     let host_ctx = WasiHostCtx {
         preview2_ctx: wasi,
         preview2_table: preview2::ResourceTable::new(),
@@ -89,7 +85,6 @@ pub fn get_store(engine: &Engine) -> Store<WasiHostCtx> {
 pub fn get_preinstance(engine: Engine, path: &Path) -> Arc<InstancePre<WasiHostCtx>> {
     let mut linker: Linker<WasiHostCtx> = Linker::new(&engine);
     preview2::preview1::add_to_linker_async(&mut linker).unwrap();
-    // wasmtime_wasi::preview2::preview1::add_to_linker_sync(&mut linker, |cx| cx).unwrap(); // async
     let module = Module::from_file(&engine, path).expect("failed to load WASI example module");
 
     Arc::new(
