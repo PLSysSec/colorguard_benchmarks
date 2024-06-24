@@ -24,7 +24,7 @@ pub fn spawn_epoch_thread(engines: Vec<Engine>, num_millisec: u64) -> Sender<()>
             // poll for termination flag
             match rx.try_recv() {
                 Ok(_) | Err(TryRecvError::Disconnected) => {
-                    println!("Terminating epoch thread");
+                    //println!("Terminating epoch thread");
                     break;
                 }
                 Err(TryRecvError::Empty) => {}

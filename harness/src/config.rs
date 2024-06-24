@@ -35,11 +35,21 @@ fn get_config(mpk: bool) -> Config {
     // pool.total_core_instances(10_000);
     // pool.total_memories(10_000);
     // pool.total_tables(10_000);
+    //let mib408
+
+    //408 MiB
+    //pool.max_memory_size(0x19_800_000);
+
+    let wasm_page_size = 64 * 1024;
+    let memory_pages = 0x19_800_000 / wasm_page_size;
+    pool.memory_pages(memory_pages);
+
     let enabled = if mpk {
         MpkEnabled::Enable
     } else {
         MpkEnabled::Disable
     };
+    //println!("{:?}", pool);
     pool.memory_protection_keys(enabled);
     let strategy = InstanceAllocationStrategy::Pooling(pool);
     let mut config = Config::default();
