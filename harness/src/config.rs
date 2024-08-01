@@ -43,7 +43,7 @@ fn get_config(mpk: bool) -> Config {
         MpkEnabled::Disable
     };
 
-    let max_tasks = if mpk { 210_000 } else { 16_000 };
+    let max_tasks = if mpk { 210_000 } else { 14_000 };
 
     pool.total_memories(max_tasks);
     pool.total_core_instances(max_tasks);
@@ -56,8 +56,8 @@ fn get_config(mpk: bool) -> Config {
     let mut config = Config::default();
     config.memory_init_cow(false);
     config.async_support(true);
-    config.max_wasm_stack(4096);
-    config.async_stack_size(8192);
+    config.max_wasm_stack(8192 * 3);
+    config.async_stack_size(8192 * 4);
     config.epoch_interruption(true);
     config.allocation_strategy(strategy);
     config
