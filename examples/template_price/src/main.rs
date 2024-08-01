@@ -1,8 +1,10 @@
 use chrono::{prelude::*, Duration};
 use serde::Serialize;
-use tera::{Context, Tera};
+//use tera::{Context, Tera};
 use std::time;
 use std::thread::sleep;
+use tinytemplate::TinyTemplate;
+use std::error::Error;
 
 use rand_distr::{Poisson, Distribution};
 // fn delay_time() -> u64 {
@@ -13,11 +15,26 @@ fn delay() {
   // let t = delay_time();
   // let ten_millis = time::Duration::from_millis(10);
   // sleep(ten_millis);
-  let lambda = 5.0;
+  let lambda = 10.0;
   let poi = Poisson::new(lambda).unwrap();
   let v = poi.sample(&mut rand::thread_rng());
   let millis = time::Duration::from_millis(v as u64);
   sleep(millis);
+}
+
+#[derive(Serialize)]
+struct Context {
+    page_title: String,
+    vendor_title: String,
+    address: String,
+    customer: String,
+    payment: String,
+    date_created: String,
+    date_due: String,
+    invoice_items: Vec<InvoiceItem>,
+    total_price: String,
+    invoice_num: String,
+    css_style: String,
 }
 
 
@@ -36,7 +53,7 @@ fn serialize_price<S: serde::Serializer>(price: &f32, s: S) -> Result<S::Ok, S::
 
 // #[fastly::main]
 // #[wasm_bindgen]
-pub fn main() {
+pub fn main() -> Result<(), Box<dyn Error>> {
   delay();
 
     // Invoice item data
@@ -65,31 +82,43 @@ pub fn main() {
     let date_due = due.format("%b %e %Y").to_string();
 
     // Create context object for template
-    let mut context = Context::new();
-
+    //let mut context = Context::new();
+    let context = Context {
+        
+    
 
     // Set template data to context
-    context.insert("page_title", "Sample Invoice, powered by Fastly");
-    context.insert("vendor_title", "Fastly Invoice");
-    context.insert("address", "P.O. Box 78266<br/>San Francisco, CA 94107 ");
-    context.insert("customer", "Example Corp.<br />billing@example.com");
-    context.insert("payment", "Credit card");
-    context.insert("date_created", &date_created);
-    context.insert("date_due", &date_due);
-    context.insert("invoice_items", &invoice_items);
-    context.insert("total_price", &format!("{:.2}", total_price));
-    context.insert("invoice_num", "10937248");
+    page_title: "Sample Invoice, powered by Fastly".to_string(),
+    vendor_title: "Fastly Invoice".to_string(),
+    address: "P.O. Box 78266<br/>San Francisco, CA 94107 ".to_string(),
+    customer: "Example Corp.<br />billing@example.com".to_string(),
+    payment: "Credit card".to_string(),
+    date_created: date_created,
+    date_due: date_due,
+    invoice_items: invoice_items,
+    total_price: format!("{:.2}", total_price),
+    invoice_num: "10937248".to_string(),
 
     // Set template CSS style
-    context.insert("css_style", INVOICE_STYLE);
+    css_style: INVOICE_STYLE.to_string(),
+
+    };
+
+    let mut tt = TinyTemplate::new();
+    tt.add_template("invoice", INVOICE_TEMPLATE)?;
+    let rendered = tt.render("invoice", &context)?;
+    
 
     // Render the template with context data
+     /*
     let invoice = Tera::default()
         .render_str(INVOICE_TEMPLATE, &context)
         .unwrap();
-
+*/
     // Send the template to client
-    println!("{}", invoice);
+    println!("{}", rendered);
+    
+    Ok(())
 }
 
 // Invoice HTML template, with template language script
@@ -99,8 +128,8 @@ const INVOICE_TEMPLATE: &str = r#"
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>{{page_title}}</title>
-    <style>{{css_style}}</style>
+    <title>{page_title}</title>
+    <style>{css_style}</style>
   </head>
 
   <body>
@@ -110,11 +139,11 @@ const INVOICE_TEMPLATE: &str = r#"
           <td colspan="2">
             <table>
               <tr>
-                <td class="title">{{vendor_title}}</td>
+                <td class="title">{vendor_title}</td>
                 <td>
-                  Invoice #: {{invoice_num}}<br />
-                  Created: {{date_created}}<br />
-                  Due: {{date_due}}
+                  Invoice #: {invoice_num}<br />
+                  Created: {date_created}<br />
+                  Due: {date_due}
                 </td>
               </tr>
             </table>
@@ -125,8 +154,8 @@ const INVOICE_TEMPLATE: &str = r#"
           <td colspan="2">
             <table>
               <tr>
-                <td>{{address}}</td>
-                <td>{{customer}}</td>
+                <td>{address}</td>
+                <td>{customer}</td>
               </tr>
             </table>
           </td>
@@ -135,17 +164,17 @@ const INVOICE_TEMPLATE: &str = r#"
         <tr class="heading"><td>Item</td><td>Price</td></tr>
 
 
-        {% for item in invoice_items %}
+        {{ for item in invoice_items }}
         <tr class="item">
-          <td>{{item.name}}</td>
-          <td>${{item.price}}</td>
+          <td>{item.name}</td>
+          <td>${item.price}</td>
         </tr>
-        {% endfor %}
+        {{ endfor }}
     
 
         <tr class="total">
           <td></td>
-          <td>Total: ${{total_price}}</td>
+          <td>Total: ${total_price}</td>
         </tr>
       </table>
     </div>
