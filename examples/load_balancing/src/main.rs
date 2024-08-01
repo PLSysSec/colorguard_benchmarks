@@ -44,7 +44,7 @@ fn main() {
   //println!("query: {}", query);
 
 //   let query = req.get_query_str().unwrap_or("string");
-  let backend = ring.get(&query).unwrap();
+  let _backend = ring.get(&query).unwrap();
 
 
   delay();
