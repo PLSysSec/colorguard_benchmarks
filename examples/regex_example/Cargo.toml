@@ -9,7 +9,7 @@ edition = "2021"
 anyhow = "1.0.79"
 #lazy_static = "1.4.0"
 log = "0.4.20"
-mr-regex = { version = "0.1.0", path = "crates/mr-regex" }
+mr-regex = "0.1.0" #{ version = "0.1.0", path = "crates/mr-regex" }
 rand = "0.8.5"
 rand_distr = "0.4.3"
 #regex = "1.10.3"
